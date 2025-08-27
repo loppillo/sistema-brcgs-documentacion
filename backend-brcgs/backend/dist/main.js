@@ -4041,10 +4041,9 @@ async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const configService = app.get(config_1.ConfigService);
     app.enableCors({
-        origin: [
-            configService.get('CORS_ORIGIN', 'http://localhost:4200'),
-            'http://localhost:4201'
-        ],
+        origin: ['https://brcinoqua.com', 'http://localhost:4000', 'http://localhost:4200', 'https://www.brcinoqua.com'],
+        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+        allowedHeaders: 'Content-Type,Authorization',
         credentials: true,
     });
     app.setGlobalPrefix('api/v1');
@@ -4073,7 +4072,7 @@ async function bootstrap() {
     const document = swagger_1.SwaggerModule.createDocument(app, config);
     swagger_1.SwaggerModule.setup('api/docs', app, document);
     const port = configService.get('PORT', 3000);
-    await app.listen(port);
+    await app.listen(3000, '0.0.0.0');
     console.log(`🚀 Aplicación corriendo en: http://localhost:${port}`);
     console.log(`📚 Documentación disponible en: http://localhost:${port}/api/docs`);
 }
