@@ -17,6 +17,9 @@ import { ApprovalRequest } from './dto/ApprovalRequest.dto';
 export class ApprovalsController {
   constructor(private readonly approvalsService: ApprovalsService) {}
 
+  @Get()
+  getAll() { return ['item1','item2']; }
+
   @Post('start')
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.EDITOR)
   @ApiOperation({ summary: 'Iniciar proceso de aprobación' })

@@ -56,9 +56,8 @@ app.use(urlencoded({ extended: true, limit: '10mb' }));
   
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
-
-  const port = configService.get('PORT', 3000);
- await app.listen(3000, '0.0.0.0');
+const port = configService.get<number>('PORT', 3000);
+await app.listen(port, '0.0.0.0');
   
   console.log(`🚀 Aplicación corriendo en: http://localhost:${port}`);
   console.log(`📚 Documentación disponible en: http://localhost:${port}/api/docs`);
