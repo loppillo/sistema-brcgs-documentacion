@@ -1059,6 +1059,7 @@ let ApprovalsController = class ApprovalsController {
     constructor(approvalsService) {
         this.approvalsService = approvalsService;
     }
+    getAll() { return ['item1', 'item2']; }
     async startApproval(approvalRequest, req) {
         return this.approvalsService.startApprovalProcess(approvalRequest, req.user);
     }
@@ -1082,6 +1083,12 @@ let ApprovalsController = class ApprovalsController {
     }
 };
 exports.ApprovalsController = ApprovalsController;
+__decorate([
+    (0, common_1.Get)(),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], ApprovalsController.prototype, "getAll", null);
 __decorate([
     (0, common_1.Post)('start'),
     (0, roles_decorator_1.Roles)(user_entity_1.UserRole.ADMIN, user_entity_1.UserRole.MANAGER, user_entity_1.UserRole.EDITOR),
@@ -4072,7 +4079,7 @@ async function bootstrap() {
     const document = swagger_1.SwaggerModule.createDocument(app, config);
     swagger_1.SwaggerModule.setup('api/docs', app, document);
     const port = configService.get('PORT', 3000);
-    await app.listen(3000, '0.0.0.0');
+    await app.listen(port, '0.0.0.0');
     console.log(`🚀 Aplicación corriendo en: http://localhost:${port}`);
     console.log(`📚 Documentación disponible en: http://localhost:${port}/api/docs`);
 }
