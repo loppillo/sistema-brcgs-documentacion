@@ -14,12 +14,7 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   // Configurar CORS
- app.enableCors({
-    origin: ['https://brcinoqua.com','http://localhost:4000','http://localhost:4200','https://www.brcinoqua.com'], // Dominios permitidos
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Métodos HTTP permitidos
-    allowedHeaders: 'Content-Type,Authorization', // Cabeceras permitidas
-    credentials: true, // Permite que se envíen cookies de sesión
-  });
+app.enableCors({ origin: true, credentials: true });
 
   // Configurar prefijo global para la API
   app.setGlobalPrefix('api/v1');
@@ -41,6 +36,7 @@ MulterModule.register({
       cb(null, uniqueSuffix + '-' + file.originalname);
     },
   }),
+    limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB max per file
 });
 app.use(express.json({ limit: '10mb' }));
 app.use(urlencoded({ extended: true, limit: '10mb' }));
