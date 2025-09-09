@@ -5,6 +5,14 @@ import * as bcrypt from 'bcrypt';
 import { User, UserRole } from '@entities/user.entity';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 
+export interface UserPermissions {
+  create: boolean;   // Permiso para crear documentos
+  edit: boolean;     // Permiso para editar documentos
+  delete: boolean;   // Permiso para eliminar documentos
+  version: boolean;  // Permiso para subir o ver versiones
+}
+
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -12,11 +20,36 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
-  async findAll(): Promise<User[]> {
-    return this.usersRepository.find({
-      select: ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'is_active', 'created_at'],
-    });
-  }
+async findAll(page: number = 1, limit: number = 10) {
+  const [data, total] = await this.usersRepository.findAndCount({
+    select: [
+      'id',
+      'username',
+      'email',
+      'first_name',
+      'last_name',
+      'role',
+      'is_active',
+      'created_at',
+      'permissions',   // 👈 importante
+    ],
+    skip: (page - 1) * limit,
+    take: limit,
+    order: { created_at: 'DESC' },
+  });
+
+  return {
+    total,
+    currentPage: page,
+    totalPages: Math.ceil(total / limit),
+    limit,
+    data,
+  };
+}
+
+async findAlls(): Promise<User[]> {
+  return this.usersRepository.find();
+}
 
   async findOne(id: number): Promise<User> {
     const user = await this.usersRepository.findOne({
@@ -128,4 +161,42 @@ export class UsersService {
       select: ['id', 'username', 'email', 'password', 'first_name', 'last_name', 'role', 'is_active', 'created_at'],
     });
   }
+
+  async updatePermissions(userId: number, permissions: Record<string, boolean>) {
+  const user = await this.usersRepository.findOneBy({ id: userId });
+  if (!user) throw new NotFoundException('Usuario no encontrado');
+  user.permissions = permissions;
+  return this.usersRepository.save(user);
+}
+
+async findById(id: number) {
+  const user = await this.usersRepository.findOne({
+    where: { id },
+  });
+
+  if (!user) {
+    throw new NotFoundException(`Usuario con id ${id} no encontrado`);
+  }
+
+  // Asigna permisos según rol
+  const permissions: UserPermissions = this.getDefaultPermissions(user.role);
+
+  // devuelve el usuario + permisos en un solo objeto plano
+  return { ...user, permissions };
+}
+
+private getDefaultPermissions(role: UserRole): UserPermissions {
+  switch (role) {
+    case UserRole.ADMIN:
+      return { create: true, edit: true, delete: true, version: true };
+    case UserRole.MANAGER:
+      return { create: true, edit: true, delete: false, version: true };
+    case UserRole.EDITOR:
+      return { create: true, edit: true, delete: false, version: true };
+    case UserRole.VIEWER:
+    default:
+      return { create: false, edit: false, delete: false, version: false };
+  }
+}
+
 }

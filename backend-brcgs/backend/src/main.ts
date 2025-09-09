@@ -36,7 +36,6 @@ MulterModule.register({
       cb(null, uniqueSuffix + '-' + file.originalname);
     },
   }),
-    limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB max per file
 });
 app.use(express.json({ limit: '10mb' }));
 app.use(urlencoded({ extended: true, limit: '10mb' }));
@@ -52,11 +51,12 @@ app.use(urlencoded({ extended: true, limit: '10mb' }));
   
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
-const port = configService.get<number>('PORT', 4000);
-await app.listen(port, '0.0.0.0');
+
+  const port = configService.get('PORT', 4000);
+  await app.listen(port);
   
   console.log(`🚀 Aplicación corriendo en: http://localhost:${port}`);
-  
+  console.log(`📚 Documentación disponible en: http://localhost:${port}/api/docs`);
 }
 
 bootstrap();

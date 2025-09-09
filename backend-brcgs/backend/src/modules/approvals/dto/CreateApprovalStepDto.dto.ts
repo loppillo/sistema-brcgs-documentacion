@@ -1,22 +1,18 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, IsBoolean } from 'class-validator';
+import { UserRole } from '@/entities/user.entity';
+import { IsString, IsArray, ArrayNotEmpty, IsInt, IsOptional, IsEnum } from 'class-validator';
+
 
 export class CreateApprovalStepDto {
   @IsString()
-  @IsNotEmpty()
-  name: string; // Nombre del paso de aprobación
+  step_name: string;
 
-  @IsString()
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsInt({ each: true })
   @IsOptional()
-  description?: string; // Descripción opcional
+  approvers?: number[];
 
-  @IsNumber()
-  @IsNotEmpty()
-  order: number; // Orden del paso (1, 2, 3...)
-
-  @IsEnum(['admin', 'editor', 'revisor', 'lector'])
-  roleRequired: 'admin' | 'editor' | 'revisor' | 'lector'; // Rol requerido para aprobar
-
-  @IsBoolean()
+  @IsEnum(UserRole)
   @IsOptional()
-  autoApprove?: boolean; // Si se aprueba automáticamente
+  role_required?: UserRole;
 }

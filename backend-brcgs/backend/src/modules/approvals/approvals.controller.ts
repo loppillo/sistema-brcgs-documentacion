@@ -17,9 +17,6 @@ import { ApprovalRequest } from './dto/ApprovalRequest.dto';
 export class ApprovalsController {
   constructor(private readonly approvalsService: ApprovalsService) {}
 
-  @Get()
-  getAll() { return ['item1','item2']; }
-
   @Post('start')
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.EDITOR)
   @ApiOperation({ summary: 'Iniciar proceso de aprobación' })
@@ -32,13 +29,18 @@ export class ApprovalsController {
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.EDITOR)
   @ApiOperation({ summary: 'Procesar aprobación (aprobar/rechazar)' })
   @ApiResponse({ status: 200, description: 'Aprobación procesada' })
-  async processApproval(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() action: ApprovalAction,
-    @Request() req,
-  ) {
-    return this.approvalsService.processApproval(id, action, req.user);
-  }
+async processApproval(
+  @Param('id') id: number,
+  @Body('approve') approve: boolean,
+  @Request() req
+) {
+  return this.approvalsService.processApproval(id, approve, req.user);
+}
+
+
+
+
+
 
   @Get('pending')
   @ApiOperation({ summary: 'Obtener aprobaciones pendientes del usuario' })
@@ -50,9 +52,11 @@ export class ApprovalsController {
   @Get('document-version/:versionId/history')
   @ApiOperation({ summary: 'Obtener historial de aprobaciones de una versión' })
   @ApiResponse({ status: 200, description: 'Historial de aprobaciones' })
-  async getApprovalHistory(@Param('versionId', ParseIntPipe) versionId: number) {
-    return this.approvalsService.getDocumentApprovalHistory(versionId);
-  }
+ async getHistoryByDocumentVersion(
+  @Param('versionId', ParseIntPipe) versionId: number,
+) {
+  return this.approvalsService.getHistoryByDocument(versionId);
+}
 
   @Get('workflows')
   @Roles(UserRole.ADMIN, UserRole.MANAGER)

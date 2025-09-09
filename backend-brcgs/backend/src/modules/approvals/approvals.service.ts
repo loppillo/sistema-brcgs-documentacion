@@ -28,179 +28,179 @@ export class ApprovalsService {
     private stepsRepository: Repository<ApprovalStep>,
     @InjectRepository(DocumentVersion)
     private versionsRepository: Repository<DocumentVersion>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+  
+
+
   ) {}
 
   // Iniciar proceso de aprobación
- async startApprovalProcess(
-  approvalRequest: ApprovalRequest,
-  user: User
-): Promise<Approval[]> {
-  // 1. Obtener versión del documento
-  const version = await this.versionsRepository.findOne({
-    where: { id: approvalRequest.document_version_id },
-    relations: ['document'],
-  });
-  if (!version) {
-    throw new NotFoundException('Versión de documento no encontrada');
-  }
+async startApprovalProcess(approvalRequest: ApprovalRequest, user: User) {
+  const { document_version_id, workflow_id } = approvalRequest;
 
-  // 2. Obtener workflow con pasos
   const workflow = await this.workflowsRepository.findOne({
-    where: { id: approvalRequest.workflow_id },
-    relations: ['steps'],
+    where: { id: workflow_id },
+    relations: ['steps', 'steps.approvers'],
   });
-  if (!workflow || !workflow.is_active) {
-    throw new NotFoundException('Flujo de aprobación no encontrado o inactivo');
+
+  if (!workflow) {
+    throw new BadRequestException(`Workflow con ID ${workflow_id} no existe`);
   }
 
-  // 3. Verificar permisos del usuario
-  if (![UserRole.ADMIN, UserRole.MANAGER, UserRole.EDITOR].includes(user.role)) {
-    throw new ForbiddenException(
-      'No tienes permisos para iniciar procesos de aprobación'
+  const firstStep = workflow.steps.find(s => s.step_order === 1);
+
+  if (!firstStep) {
+    throw new BadRequestException(`El workflow no tiene pasos configurados`);
+  }
+
+  // ✅ Verificar si tiene aprobadores directos
+  let approver: User | null = firstStep.approvers?.[0] ?? null;
+
+  // ✅ Si no hay aprobadores pero tiene rol requerido → buscar uno
+  if (!approver && firstStep.required_role) {
+    approver = await this.getDefaultApproverByRole(firstStep.required_role);
+  }
+
+  // ✅ Si tampoco hay → error
+  if (!approver) {
+    throw new BadRequestException(
+      `El paso "${firstStep.step_name}" no tiene asignado un aprobador ni rol válido`,
     );
   }
 
-  // 4. Ordenar pasos
-  const sortedSteps = workflow.steps.sort((a, b) => a.step_order - b.step_order);
-  if (sortedSteps.length === 0) {
-    throw new BadRequestException('El workflow no tiene pasos definidos');
-  }
+  // ✅ Crear registro en Approval
+  const approval = this.approvalsRepository.create({
+    document_version_id,
+    workflow_id,
+    step: firstStep,
+    approver_id: approver.id,
+    status: ApprovalStatus.PENDING, // 👈 clave
+    created_at: new Date(),
+  });
 
-  // 5. Crear aprobaciones
-  const approvals = await Promise.all(
-    sortedSteps.map(async (step) => {
-      const approverId = step.required_user_id || this.getDefaultApproverByRole(step.required_role);
-      if (!approverId) {
-        throw new BadRequestException(
-          `El paso "${step.step_name}" no tiene asignado un aprobador ni rol válido`
-        );
-      }
+  await this.approvalsRepository.save(approval);
 
-      const approval = this.approvalsRepository.create({
-        document_version_id: approvalRequest.document_version_id,
-        workflow_id: approvalRequest.workflow_id,
-        step_id: step.id,
-        approver_id: approverId,
-        status: ApprovalStatus.PENDING,
-      });
-
-      return this.approvalsRepository.save(approval);
-    })
-  );
-
-  // 6. Actualizar estado de la versión
-  version.status = DocumentVersionStatus.PENDING_APPROVAL;
-  await this.versionsRepository.save(version);
-
-  return approvals;
+  return {
+    message: 'Proceso de aprobación iniciado correctamente',
+    workflow_id,
+    document_version_id,
+    assigned_approver: approver.username,
+    current_step: firstStep.step_name,
+  };
 }
 
 
+
+
   // Procesar aprobación
-  async processApproval(approvalId: number, action: ApprovalAction, user: User): Promise<Approval> {
-    const approval = await this.approvalsRepository.findOne({
-      where: { id: approvalId },
-      relations: ['step', 'workflow', 'document_version', 'document_version.document'],
-    });
+async processApproval(id: number, approve: boolean, user: User): Promise<Approval> {
+  const approval = await this.approvalsRepository.findOne({ 
+    where: { id },
+    relations: ['approver']  // Para que se pueda devolver el usuario
+  });
 
-    if (!approval) {
-      throw new NotFoundException('Aprobación no encontrada');
-    }
-
-    // Verificar que el usuario puede aprobar
-    if (approval.approver_id !== user.id && !this.canUserApproveStep(user, approval.step)) {
-      throw new ForbiddenException('No tienes permisos para procesar esta aprobación');
-    }
-
-    // Verificar que la aprobación está pendiente
-    if (approval.status !== ApprovalStatus.PENDING) {
-      throw new BadRequestException('Esta aprobación ya fue procesada');
-    }
-
-    // Actualizar la aprobación
-    approval.status = action.status;
-    approval.comments = action.comments;
-    approval.approved_at = new Date();
-
-    const updatedApproval = await this.approvalsRepository.save(approval);
-
-    // Verificar si se completa el flujo de aprobación
-    await this.checkWorkflowCompletion(approval.workflow_id, approval.document_version_id);
-
-    return updatedApproval;
+  if (!approval) {
+    throw new NotFoundException(`No se encontró la aprobación con ID ${id}`);
   }
+
+  // Actualizar estado y fecha
+  approval.status = approve ? ApprovalStatus.APPROVED : ApprovalStatus.REJECTED;
+  approval.approved_at = new Date();
+
+  // Registrar quién hizo la aprobación
+  approval.approver = user;
+
+  // Guardar cambios
+  return this.approvalsRepository.save(approval);
+}
+
+
 
   // Obtener aprobaciones pendientes para un usuario
-  async getPendingApprovals(user: User): Promise<Approval[]> {
-    const query = this.approvalsRepository.createQueryBuilder('approval')
-      .leftJoinAndSelect('approval.step', 'step')
-      .leftJoinAndSelect('approval.workflow', 'workflow')
-      .leftJoinAndSelect('approval.document_version', 'document_version')
-      .leftJoinAndSelect('document_version.document', 'document')
-      .where('approval.status = :status', { status: ApprovalStatus.PENDING });
+ async getPendingApprovals(user: User): Promise<Approval[]> {
+  const query = this.approvalsRepository.createQueryBuilder('approval')
+    .leftJoinAndSelect('approval.step', 'step')
+    .leftJoinAndSelect('approval.workflow', 'workflow')
+    .leftJoinAndSelect('approval.document_version', 'document_version')
+    .leftJoinAndSelect('document_version.document', 'document')
+    .leftJoinAndSelect('approval.approver', 'approver') // 👈 aquí unimos con User
+    .where('approval.status = :status', { status: ApprovalStatus.PENDING });
 
-    // Filtrar por usuario específico o por rol
-    if (user.role === UserRole.ADMIN) {
-      // Los administradores pueden ver todas las aprobaciones pendientes
-    } else {
-      query.andWhere('(approval.approver_id = :userId OR step.required_role = :userRole)', {
-        userId: user.id,
-        userRole: user.role,
-      });
-    }
-
-    return query.orderBy('approval.created_at', 'ASC').getMany();
+  if (user.role !== UserRole.ADMIN) {
+    query.andWhere('(approval.approver_id = :userId OR step.required_role = :userRole)', {
+      userId: user.id,
+      userRole: user.role,
+    });
   }
+
+  return query.orderBy('approval.created_at', 'ASC').getMany();
+}
+
 
   // Obtener historial de aprobaciones de un documento
   async getDocumentApprovalHistory(documentVersionId: number): Promise<Approval[]> {
-    return this.approvalsRepository.find({
-      where: { document_version_id: documentVersionId },
-      relations: ['step', 'workflow', 'approver'],
-      order: { created_at: 'ASC' },
-    });
+ return this.approvalsRepository.find({
+    where: { document_version_id: documentVersionId },
+    relations: ['step', 'workflow', 'approver', 'document_version', 'document_version.document'],
+    order: { created_at: 'ASC' }
+  });
   }
 
   // Gestión de flujos de trabajo
-  async getWorkflows(): Promise<ApprovalWorkflow[]> {
-    return this.workflowsRepository.find({
-      where: { is_active: true },
-      relations: ['steps'],
-      order: { created_at: 'DESC' },
-    });
-  }
+async getWorkflows(): Promise<ApprovalWorkflow[]> {
+  return this.workflowsRepository.find({
+    where: { is_active: true },
+    relations: ['steps', 'steps.approvers'], // <-- incluimos los approvers
+    order: { created_at: 'DESC' },
+  });
+}
 
    async createWorkflow(workflowData: Partial<ApprovalWorkflow>): Promise<ApprovalWorkflow> {
     const workflow = this.workflowsRepository.create(workflowData);
     return this.workflowsRepository.save(workflow);
   }
 
-async addStepToWorkflow(workflowId: number, dto: CreateApprovalStepDto): Promise<ApprovalStep> {
-  const workflow = await this.workflowsRepository.findOne({ where: { id: workflowId }, relations: ['steps'] });
-  if (!workflow) {
-    throw new NotFoundException('Flujo de trabajo no encontrado');
+async addStepToWorkflow(workflowId: number, stepData: CreateApprovalStepDto) {
+  if ((!stepData.approvers || stepData.approvers.length === 0) && !stepData.role_required) {
+    throw new BadRequestException(
+      `El paso "${stepData.step_name}" no tiene asignado un aprobador ni rol válido`,
+    );
   }
 
-  const lastStep = workflow.steps?.reduce((max, s) => s.step_order > max ? s.step_order : max, 0) || 0;
-  const nextOrder = lastStep + 1;
+  const workflow = await this.workflowsRepository.findOne({ where: { id: workflowId } });
+  if (!workflow) throw new NotFoundException('Workflow no encontrado');
+
+  // Convertir IDs de usuarios en entidades User
+  const approvers: User[] = stepData.approvers
+    ? await this.userRepository.findByIds(stepData.approvers)
+    : [];
+
+  const lastStepOrder =
+    (await this.stepsRepository.find({ where: { workflow_id: workflowId } }))
+      .reduce((max, s) => (s.step_order > max ? s.step_order : max), 0) || 0;
 
   const step = this.stepsRepository.create({
-    ...dto,
-    workflow_id: workflowId,
-  
-    // usa el enviado o calcula
+    step_name: stepData.step_name,
+    step_order: lastStepOrder + 1,
+    required_role: stepData.role_required,
+    workflow,
+    workflow_id: workflow.id,
+    approvers,
   });
 
   return this.stepsRepository.save(step);
 }
 
 
+
+
   // Métodos auxiliares privados
-  private getDefaultApproverByRole(role: UserRole): number {
-    // En una implementación real, esto buscaría usuarios apropiados por rol
-    // Por ahora retornamos null para que sea asignado manualmente
-    return null;
-  }
+private async getDefaultApproverByRole(role: UserRole): Promise<User | null> {
+  return this.userRepository.findOne({
+    where: { role, is_active: true },
+  });
+}
 
   private canUserApproveStep(user: User, step: ApprovalStep): boolean {
     // Verificar si el usuario puede aprobar este paso basado en su rol
@@ -212,9 +212,7 @@ async addStepToWorkflow(workflowId: number, dto: CreateApprovalStepDto): Promise
       return true;
     }
 
-    if (step.required_user_id && user.id === step.required_user_id) {
-      return true;
-    }
+   
 
     return false;
   }
@@ -257,4 +255,22 @@ async addStepToWorkflow(workflowId: number, dto: CreateApprovalStepDto): Promise
       await this.versionsRepository.save(version);
     }
   }
+
+async getHistoryByDocument(documentId: number): Promise<Approval[]> {
+  return this.approvalsRepository.find({
+    where: { 
+      document_version: { document: { id: documentId } }
+    },
+    relations: [
+      'workflow',
+      'step',
+      'approver',
+      'document_version',
+      'document_version.document',
+    ],
+    order: { created_at: 'ASC' }, // historial cronológico
+  });
+}
+
+
 }

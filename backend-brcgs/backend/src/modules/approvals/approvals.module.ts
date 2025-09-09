@@ -6,6 +6,7 @@ import { Approval } from '@entities/approval.entity';
 import { ApprovalWorkflow } from '@entities/approval-workflow.entity';
 import { ApprovalStep } from '@entities/approval-step.entity';
 import { DocumentVersion } from '@entities/document-version.entity';
+import { User } from '@/entities';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { DocumentVersion } from '@entities/document-version.entity';
       Approval,
       ApprovalStep,
       DocumentVersion,
+      User
     ]),
   ],
   controllers: [ApprovalsController],

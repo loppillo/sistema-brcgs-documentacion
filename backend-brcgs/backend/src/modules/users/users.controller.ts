@@ -1,11 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseIntPipe, Query, NotFoundException,Req, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { UsersService } from './users.service';
+import { UserPermissions, UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto/user.dto';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@modules/auth/guards/roles.guard';
 import { Roles } from '@modules/auth/decorators/roles.decorator';
 import { UserRole } from '@entities/user.entity';
+
 
 @ApiTags('usuarios')
 @Controller('users')
@@ -26,9 +27,25 @@ export class UsersController {
   @Roles(UserRole.ADMIN, UserRole.MANAGER)
   @ApiOperation({ summary: 'Obtener todos los usuarios' })
   @ApiResponse({ status: 200, description: 'Lista de usuarios', type: [UserResponseDto] })
-  async findAll(): Promise<UserResponseDto[]> {
-    return this.usersService.findAll();
+  async findAll( @Query('page') page: number = 1,
+  @Query('limit') limit: number = 10,) {
+    return this.usersService.findAll(page, limit);
   }
+
+  @Get('all')
+@Roles(UserRole.ADMIN, UserRole.MANAGER)
+@ApiOperation({ summary: 'Obtener todos los usuarios' })
+@ApiResponse({
+  status: 200,
+  description: 'Lista de usuarios',
+  type: [UserResponseDto],
+})
+async findAlls() {
+  return this.usersService.findAlls();
+}
+
+
+
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.MANAGER)
@@ -65,4 +82,39 @@ export class UsersController {
   async getUsersByRole(@Param('role') role: UserRole): Promise<UserResponseDto[]> {
     return this.usersService.getUsersByRole(role);
   }
+
+  @Patch(':id/permissions')
+@Roles(UserRole.ADMIN)
+@ApiOperation({ summary: 'Actualizar permisos de un usuario' })
+async updatePermissions(
+  @Param('id', ParseIntPipe) id: number,
+  @Body() permissions: Record<string, boolean>
+) {
+  return this.usersService.updatePermissions(id, permissions);
+}
+
+@Get('me/permissions')
+  @ApiOperation({ summary: 'Obtener permisos actuales del usuario' })
+  async getCurrentUserPermissions(@Request() req): Promise<UserPermissions> {
+    // req.user es poblado por JwtAuthGuard
+    const userId = (req.user as any)?.id;
+    if (!userId) {
+      throw new NotFoundException('Usuario no autenticado');
+    }
+
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException(`Usuario con id ${userId} no encontrado`);
+    }
+
+    // Retorna solo los permisos
+    return user.permissions;
+  }
+
+@Get('me')
+async getProfile(@Request() req: any) {
+  const userId = Number(req.user.id); // 👈 asegura que sea número
+  const user = await this.usersService.findById(userId);
+  return user;
+}
 }

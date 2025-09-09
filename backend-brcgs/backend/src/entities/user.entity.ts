@@ -65,6 +65,9 @@ export class User {
   @OneToMany(() => AuditLog, log => log.user)
   audit_logs: AuditLog[];
 
+  @Column({ type: 'json', nullable: true })
+  permissions: Record<string, boolean>; 
+
   // Método para obtener el nombre completo
   get full_name(): string {
     return `${this.first_name} ${this.last_name}`;
