@@ -18,7 +18,7 @@ export class DocumentPermission {
   @Column()
   document_id: number;
 
-  @Column({ nullable: true })
+  @Column()
   user_id: number;
 
   @Column({
@@ -30,7 +30,7 @@ export class DocumentPermission {
 
   @Column({
     type: 'enum',
-    enum: ['read', 'write', 'delete', 'approve']
+    enum: ['read', 'write', 'delete', 'approve','edit']
   })
   permission_type: PermissionType;
 

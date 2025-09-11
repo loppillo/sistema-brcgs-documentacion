@@ -93,12 +93,19 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a, _b, _c, _d;
+var _a, _b;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ApprovalStep = void 0;
+exports.ApprovalStep = exports.UserRole = void 0;
 const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
 const approval_workflow_entity_1 = __webpack_require__(/*! ./approval-workflow.entity */ "./src/entities/approval-workflow.entity.ts");
 const user_entity_1 = __webpack_require__(/*! ./user.entity */ "./src/entities/user.entity.ts");
+var UserRole;
+(function (UserRole) {
+    UserRole["ADMIN"] = "admin";
+    UserRole["MANAGER"] = "manager";
+    UserRole["EDITOR"] = "editor";
+    UserRole["VIEWER"] = "viewer";
+})(UserRole || (exports.UserRole = UserRole = {}));
 let ApprovalStep = class ApprovalStep {
 };
 exports.ApprovalStep = ApprovalStep;
@@ -111,43 +118,43 @@ __decorate([
     __metadata("design:type", Number)
 ], ApprovalStep.prototype, "step_order", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 100 }),
+    (0, typeorm_1.Column)(),
     __metadata("design:type", String)
 ], ApprovalStep.prototype, "step_name", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: 'enum',
-        enum: ['admin', 'manager', 'editor', 'viewer'],
-        default: 'viewer'
+        enum: UserRole,
+        nullable: true,
     }),
-    __metadata("design:type", typeof (_a = typeof user_entity_1.UserRole !== "undefined" && user_entity_1.UserRole) === "function" ? _a : Object)
+    __metadata("design:type", String)
 ], ApprovalStep.prototype, "required_role", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
-], ApprovalStep.prototype, "required_user_id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
 ], ApprovalStep.prototype, "is_parallel", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
-    __metadata("design:type", typeof (_b = typeof Date !== "undefined" && Date) === "function" ? _b : Object)
+    __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
 ], ApprovalStep.prototype, "created_at", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => approval_workflow_entity_1.ApprovalWorkflow, workflow => workflow.steps, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.ManyToOne)(() => approval_workflow_entity_1.ApprovalWorkflow, (workflow) => workflow.steps, { onDelete: 'CASCADE' }),
     (0, typeorm_1.JoinColumn)({ name: 'workflow_id' }),
-    __metadata("design:type", typeof (_c = typeof approval_workflow_entity_1.ApprovalWorkflow !== "undefined" && approval_workflow_entity_1.ApprovalWorkflow) === "function" ? _c : Object)
+    __metadata("design:type", typeof (_b = typeof approval_workflow_entity_1.ApprovalWorkflow !== "undefined" && approval_workflow_entity_1.ApprovalWorkflow) === "function" ? _b : Object)
 ], ApprovalStep.prototype, "workflow", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => user_entity_1.User),
-    (0, typeorm_1.JoinColumn)({ name: 'required_user_id' }),
-    __metadata("design:type", typeof (_d = typeof user_entity_1.User !== "undefined" && user_entity_1.User) === "function" ? _d : Object)
-], ApprovalStep.prototype, "required_user", void 0);
 __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", Number)
 ], ApprovalStep.prototype, "workflow_id", void 0);
+__decorate([
+    (0, typeorm_1.ManyToMany)(() => user_entity_1.User),
+    (0, typeorm_1.JoinTable)({
+        name: 'approval_step_approvers',
+        joinColumn: { name: 'step_id', referencedColumnName: 'id' },
+        inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    }),
+    __metadata("design:type", Array)
+], ApprovalStep.prototype, "approvers", void 0);
 exports.ApprovalStep = ApprovalStep = __decorate([
     (0, typeorm_1.Entity)('approval_steps')
 ], ApprovalStep);
@@ -511,7 +518,7 @@ __decorate([
     __metadata("design:type", Number)
 ], DocumentPermission.prototype, "document_id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
+    (0, typeorm_1.Column)(),
     __metadata("design:type", Number)
 ], DocumentPermission.prototype, "user_id", void 0);
 __decorate([
@@ -525,7 +532,7 @@ __decorate([
 __decorate([
     (0, typeorm_1.Column)({
         type: 'enum',
-        enum: ['read', 'write', 'delete', 'approve']
+        enum: ['read', 'write', 'delete', 'approve', 'edit']
     }),
     __metadata("design:type", String)
 ], DocumentPermission.prototype, "permission_type", void 0);
@@ -929,7 +936,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a, _b;
+var _a, _b, _c;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.User = exports.UserRole = void 0;
 const typeorm_1 = __webpack_require__(/*! typeorm */ "typeorm");
@@ -1016,6 +1023,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => audit_log_entity_1.AuditLog, log => log.user),
     __metadata("design:type", Array)
 ], User.prototype, "audit_logs", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'json', nullable: true }),
+    __metadata("design:type", typeof (_c = typeof Record !== "undefined" && Record) === "function" ? _c : Object)
+], User.prototype, "permissions", void 0);
 exports.User = User = __decorate([
     (0, typeorm_1.Entity)('users')
 ], User);
@@ -1042,7 +1053,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e;
+var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ApprovalsController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
@@ -1059,18 +1070,17 @@ let ApprovalsController = class ApprovalsController {
     constructor(approvalsService) {
         this.approvalsService = approvalsService;
     }
-    getAll() { return ['item1', 'item2']; }
     async startApproval(approvalRequest, req) {
         return this.approvalsService.startApprovalProcess(approvalRequest, req.user);
     }
-    async processApproval(id, action, req) {
-        return this.approvalsService.processApproval(id, action, req.user);
+    async processApproval(id, approve, req) {
+        return this.approvalsService.processApproval(id, approve, req.user);
     }
     async getPendingApprovals(req) {
         return this.approvalsService.getPendingApprovals(req.user);
     }
-    async getApprovalHistory(versionId) {
-        return this.approvalsService.getDocumentApprovalHistory(versionId);
+    async getHistoryByDocumentVersion(versionId) {
+        return this.approvalsService.getHistoryByDocument(versionId);
     }
     async getWorkflows() {
         return this.approvalsService.getWorkflows();
@@ -1083,12 +1093,6 @@ let ApprovalsController = class ApprovalsController {
     }
 };
 exports.ApprovalsController = ApprovalsController;
-__decorate([
-    (0, common_1.Get)(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], ApprovalsController.prototype, "getAll", null);
 __decorate([
     (0, common_1.Post)('start'),
     (0, roles_decorator_1.Roles)(user_entity_1.UserRole.ADMIN, user_entity_1.UserRole.MANAGER, user_entity_1.UserRole.EDITOR),
@@ -1105,11 +1109,11 @@ __decorate([
     (0, roles_decorator_1.Roles)(user_entity_1.UserRole.ADMIN, user_entity_1.UserRole.MANAGER, user_entity_1.UserRole.EDITOR),
     (0, swagger_1.ApiOperation)({ summary: 'Procesar aprobación (aprobar/rechazar)' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Aprobación procesada' }),
-    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Body)()),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)('approve')),
     __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, typeof (_c = typeof approvals_service_1.ApprovalAction !== "undefined" && approvals_service_1.ApprovalAction) === "function" ? _c : Object, Object]),
+    __metadata("design:paramtypes", [Number, Boolean, Object]),
     __metadata("design:returntype", Promise)
 ], ApprovalsController.prototype, "processApproval", null);
 __decorate([
@@ -1129,7 +1133,7 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
-], ApprovalsController.prototype, "getApprovalHistory", null);
+], ApprovalsController.prototype, "getHistoryByDocumentVersion", null);
 __decorate([
     (0, common_1.Get)('workflows'),
     (0, roles_decorator_1.Roles)(user_entity_1.UserRole.ADMIN, user_entity_1.UserRole.MANAGER),
@@ -1146,7 +1150,7 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 201, description: 'Flujo de trabajo creado correctamente' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_d = typeof create_approval_workflow_dto_1.CreateApprovalWorkflowDto !== "undefined" && create_approval_workflow_dto_1.CreateApprovalWorkflowDto) === "function" ? _d : Object]),
+    __metadata("design:paramtypes", [typeof (_c = typeof create_approval_workflow_dto_1.CreateApprovalWorkflowDto !== "undefined" && create_approval_workflow_dto_1.CreateApprovalWorkflowDto) === "function" ? _c : Object]),
     __metadata("design:returntype", Promise)
 ], ApprovalsController.prototype, "createWorkflow", null);
 __decorate([
@@ -1157,7 +1161,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, typeof (_e = typeof CreateApprovalStepDto_dto_1.CreateApprovalStepDto !== "undefined" && CreateApprovalStepDto_dto_1.CreateApprovalStepDto) === "function" ? _e : Object]),
+    __metadata("design:paramtypes", [Number, typeof (_d = typeof CreateApprovalStepDto_dto_1.CreateApprovalStepDto !== "undefined" && CreateApprovalStepDto_dto_1.CreateApprovalStepDto) === "function" ? _d : Object]),
     __metadata("design:returntype", Promise)
 ], ApprovalsController.prototype, "addWorkflowStep", null);
 exports.ApprovalsController = ApprovalsController = __decorate([
@@ -1194,6 +1198,7 @@ const approval_entity_1 = __webpack_require__(/*! @entities/approval.entity */ "
 const approval_workflow_entity_1 = __webpack_require__(/*! @entities/approval-workflow.entity */ "./src/entities/approval-workflow.entity.ts");
 const approval_step_entity_1 = __webpack_require__(/*! @entities/approval-step.entity */ "./src/entities/approval-step.entity.ts");
 const document_version_entity_1 = __webpack_require__(/*! @entities/document-version.entity */ "./src/entities/document-version.entity.ts");
+const entities_1 = __webpack_require__(/*! @/entities */ "./src/entities/index.ts");
 let ApprovalsModule = class ApprovalsModule {
 };
 exports.ApprovalsModule = ApprovalsModule;
@@ -1205,6 +1210,7 @@ exports.ApprovalsModule = ApprovalsModule = __decorate([
                 approval_entity_1.Approval,
                 approval_step_entity_1.ApprovalStep,
                 document_version_entity_1.DocumentVersion,
+                entities_1.User
             ]),
         ],
         controllers: [approvals_controller_1.ApprovalsController],
@@ -1235,7 +1241,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d;
+var _a, _b, _c, _d, _e;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ApprovalsService = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
@@ -1247,72 +1253,62 @@ const approval_step_entity_1 = __webpack_require__(/*! @entities/approval-step.e
 const document_version_entity_1 = __webpack_require__(/*! @entities/document-version.entity */ "./src/entities/document-version.entity.ts");
 const user_entity_1 = __webpack_require__(/*! @entities/user.entity */ "./src/entities/user.entity.ts");
 let ApprovalsService = class ApprovalsService {
-    constructor(approvalsRepository, workflowsRepository, stepsRepository, versionsRepository) {
+    constructor(approvalsRepository, workflowsRepository, stepsRepository, versionsRepository, userRepository) {
         this.approvalsRepository = approvalsRepository;
         this.workflowsRepository = workflowsRepository;
         this.stepsRepository = stepsRepository;
         this.versionsRepository = versionsRepository;
+        this.userRepository = userRepository;
     }
     async startApprovalProcess(approvalRequest, user) {
-        const version = await this.versionsRepository.findOne({
-            where: { id: approvalRequest.document_version_id },
-            relations: ['document'],
-        });
-        if (!version) {
-            throw new common_1.NotFoundException('Versión de documento no encontrada');
-        }
+        const { document_version_id, workflow_id } = approvalRequest;
         const workflow = await this.workflowsRepository.findOne({
-            where: { id: approvalRequest.workflow_id },
-            relations: ['steps'],
+            where: { id: workflow_id },
+            relations: ['steps', 'steps.approvers'],
         });
-        if (!workflow || !workflow.is_active) {
-            throw new common_1.NotFoundException('Flujo de aprobación no encontrado o inactivo');
+        if (!workflow) {
+            throw new common_1.BadRequestException(`Workflow con ID ${workflow_id} no existe`);
         }
-        if (![user_entity_1.UserRole.ADMIN, user_entity_1.UserRole.MANAGER, user_entity_1.UserRole.EDITOR].includes(user.role)) {
-            throw new common_1.ForbiddenException('No tienes permisos para iniciar procesos de aprobación');
+        const firstStep = workflow.steps.find(s => s.step_order === 1);
+        if (!firstStep) {
+            throw new common_1.BadRequestException(`El workflow no tiene pasos configurados`);
         }
-        const sortedSteps = workflow.steps.sort((a, b) => a.step_order - b.step_order);
-        if (sortedSteps.length === 0) {
-            throw new common_1.BadRequestException('El workflow no tiene pasos definidos');
+        let approver = firstStep.approvers?.[0] ?? null;
+        if (!approver && firstStep.required_role) {
+            approver = await this.getDefaultApproverByRole(firstStep.required_role);
         }
-        const approvals = await Promise.all(sortedSteps.map(async (step) => {
-            const approverId = step.required_user_id || this.getDefaultApproverByRole(step.required_role);
-            if (!approverId) {
-                throw new common_1.BadRequestException(`El paso "${step.step_name}" no tiene asignado un aprobador ni rol válido`);
-            }
-            const approval = this.approvalsRepository.create({
-                document_version_id: approvalRequest.document_version_id,
-                workflow_id: approvalRequest.workflow_id,
-                step_id: step.id,
-                approver_id: approverId,
-                status: approval_entity_1.ApprovalStatus.PENDING,
-            });
-            return this.approvalsRepository.save(approval);
-        }));
-        version.status = document_version_entity_1.DocumentVersionStatus.PENDING_APPROVAL;
-        await this.versionsRepository.save(version);
-        return approvals;
+        if (!approver) {
+            throw new common_1.BadRequestException(`El paso "${firstStep.step_name}" no tiene asignado un aprobador ni rol válido`);
+        }
+        const approval = this.approvalsRepository.create({
+            document_version_id,
+            workflow_id,
+            step: firstStep,
+            approver_id: approver.id,
+            status: approval_entity_1.ApprovalStatus.PENDING,
+            created_at: new Date(),
+        });
+        await this.approvalsRepository.save(approval);
+        return {
+            message: 'Proceso de aprobación iniciado correctamente',
+            workflow_id,
+            document_version_id,
+            assigned_approver: approver.username,
+            current_step: firstStep.step_name,
+        };
     }
-    async processApproval(approvalId, action, user) {
+    async processApproval(id, approve, user) {
         const approval = await this.approvalsRepository.findOne({
-            where: { id: approvalId },
-            relations: ['step', 'workflow', 'document_version', 'document_version.document'],
+            where: { id },
+            relations: ['approver']
         });
         if (!approval) {
-            throw new common_1.NotFoundException('Aprobación no encontrada');
+            throw new common_1.NotFoundException(`No se encontró la aprobación con ID ${id}`);
         }
-        if (approval.approver_id !== user.id && !this.canUserApproveStep(user, approval.step)) {
-            throw new common_1.ForbiddenException('No tienes permisos para procesar esta aprobación');
-        }
-        if (approval.status !== approval_entity_1.ApprovalStatus.PENDING) {
-            throw new common_1.BadRequestException('Esta aprobación ya fue procesada');
-        }
-        approval.status = action.status;
-        approval.comments = action.comments;
+        approval.status = approve ? approval_entity_1.ApprovalStatus.APPROVED : approval_entity_1.ApprovalStatus.REJECTED;
         approval.approved_at = new Date();
-        const updatedApproval = await this.approvalsRepository.save(approval);
-        await this.checkWorkflowCompletion(approval.workflow_id, approval.document_version_id);
-        return updatedApproval;
+        approval.approver = user;
+        return this.approvalsRepository.save(approval);
     }
     async getPendingApprovals(user) {
         const query = this.approvalsRepository.createQueryBuilder('approval')
@@ -1320,10 +1316,9 @@ let ApprovalsService = class ApprovalsService {
             .leftJoinAndSelect('approval.workflow', 'workflow')
             .leftJoinAndSelect('approval.document_version', 'document_version')
             .leftJoinAndSelect('document_version.document', 'document')
+            .leftJoinAndSelect('approval.approver', 'approver')
             .where('approval.status = :status', { status: approval_entity_1.ApprovalStatus.PENDING });
-        if (user.role === user_entity_1.UserRole.ADMIN) {
-        }
-        else {
+        if (user.role !== user_entity_1.UserRole.ADMIN) {
             query.andWhere('(approval.approver_id = :userId OR step.required_role = :userRole)', {
                 userId: user.id,
                 userRole: user.role,
@@ -1334,14 +1329,14 @@ let ApprovalsService = class ApprovalsService {
     async getDocumentApprovalHistory(documentVersionId) {
         return this.approvalsRepository.find({
             where: { document_version_id: documentVersionId },
-            relations: ['step', 'workflow', 'approver'],
-            order: { created_at: 'ASC' },
+            relations: ['step', 'workflow', 'approver', 'document_version', 'document_version.document'],
+            order: { created_at: 'ASC' }
         });
     }
     async getWorkflows() {
         return this.workflowsRepository.find({
             where: { is_active: true },
-            relations: ['steps'],
+            relations: ['steps', 'steps.approvers'],
             order: { created_at: 'DESC' },
         });
     }
@@ -1349,30 +1344,38 @@ let ApprovalsService = class ApprovalsService {
         const workflow = this.workflowsRepository.create(workflowData);
         return this.workflowsRepository.save(workflow);
     }
-    async addStepToWorkflow(workflowId, dto) {
-        const workflow = await this.workflowsRepository.findOne({ where: { id: workflowId }, relations: ['steps'] });
-        if (!workflow) {
-            throw new common_1.NotFoundException('Flujo de trabajo no encontrado');
+    async addStepToWorkflow(workflowId, stepData) {
+        if ((!stepData.approvers || stepData.approvers.length === 0) && !stepData.role_required) {
+            throw new common_1.BadRequestException(`El paso "${stepData.step_name}" no tiene asignado un aprobador ni rol válido`);
         }
-        const lastStep = workflow.steps?.reduce((max, s) => s.step_order > max ? s.step_order : max, 0) || 0;
-        const nextOrder = lastStep + 1;
+        const workflow = await this.workflowsRepository.findOne({ where: { id: workflowId } });
+        if (!workflow)
+            throw new common_1.NotFoundException('Workflow no encontrado');
+        const approvers = stepData.approvers
+            ? await this.userRepository.findByIds(stepData.approvers)
+            : [];
+        const lastStepOrder = (await this.stepsRepository.find({ where: { workflow_id: workflowId } }))
+            .reduce((max, s) => (s.step_order > max ? s.step_order : max), 0) || 0;
         const step = this.stepsRepository.create({
-            ...dto,
-            workflow_id: workflowId,
+            step_name: stepData.step_name,
+            step_order: lastStepOrder + 1,
+            required_role: stepData.role_required,
+            workflow,
+            workflow_id: workflow.id,
+            approvers,
         });
         return this.stepsRepository.save(step);
     }
-    getDefaultApproverByRole(role) {
-        return null;
+    async getDefaultApproverByRole(role) {
+        return this.userRepository.findOne({
+            where: { role, is_active: true },
+        });
     }
     canUserApproveStep(user, step) {
         if (user.role === user_entity_1.UserRole.ADMIN) {
             return true;
         }
         if (step.required_role && user.role === step.required_role) {
-            return true;
-        }
-        if (step.required_user_id && user.id === step.required_user_id) {
             return true;
         }
         return false;
@@ -1406,6 +1409,21 @@ let ApprovalsService = class ApprovalsService {
             await this.versionsRepository.save(version);
         }
     }
+    async getHistoryByDocument(documentId) {
+        return this.approvalsRepository.find({
+            where: {
+                document_version: { document: { id: documentId } }
+            },
+            relations: [
+                'workflow',
+                'step',
+                'approver',
+                'document_version',
+                'document_version.document',
+            ],
+            order: { created_at: 'ASC' },
+        });
+    }
 };
 exports.ApprovalsService = ApprovalsService;
 exports.ApprovalsService = ApprovalsService = __decorate([
@@ -1414,7 +1432,8 @@ exports.ApprovalsService = ApprovalsService = __decorate([
     __param(1, (0, typeorm_1.InjectRepository)(approval_workflow_entity_1.ApprovalWorkflow)),
     __param(2, (0, typeorm_1.InjectRepository)(approval_step_entity_1.ApprovalStep)),
     __param(3, (0, typeorm_1.InjectRepository)(document_version_entity_1.DocumentVersion)),
-    __metadata("design:paramtypes", [typeof (_a = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _a : Object, typeof (_b = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _b : Object, typeof (_c = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _c : Object, typeof (_d = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _d : Object])
+    __param(4, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __metadata("design:paramtypes", [typeof (_a = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _a : Object, typeof (_b = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _b : Object, typeof (_c = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _c : Object, typeof (_d = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _d : Object, typeof (_e = typeof typeorm_2.Repository !== "undefined" && typeorm_2.Repository) === "function" ? _e : Object])
 ], ApprovalsService);
 
 
@@ -1478,36 +1497,30 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CreateApprovalStepDto = void 0;
+const user_entity_1 = __webpack_require__(/*! @/entities/user.entity */ "./src/entities/user.entity.ts");
 const class_validator_1 = __webpack_require__(/*! class-validator */ "class-validator");
 class CreateApprovalStepDto {
 }
 exports.CreateApprovalStepDto = CreateApprovalStepDto;
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], CreateApprovalStepDto.prototype, "name", void 0);
+], CreateApprovalStepDto.prototype, "step_name", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayNotEmpty)(),
+    (0, class_validator_1.IsInt)({ each: true }),
     (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], CreateApprovalStepDto.prototype, "description", void 0);
+    __metadata("design:type", Array)
+], CreateApprovalStepDto.prototype, "approvers", void 0);
 __decorate([
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", Number)
-], CreateApprovalStepDto.prototype, "order", void 0);
-__decorate([
-    (0, class_validator_1.IsEnum)(['admin', 'editor', 'revisor', 'lector']),
-    __metadata("design:type", String)
-], CreateApprovalStepDto.prototype, "roleRequired", void 0);
-__decorate([
-    (0, class_validator_1.IsBoolean)(),
+    (0, class_validator_1.IsEnum)(user_entity_1.UserRole),
     (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Boolean)
-], CreateApprovalStepDto.prototype, "autoApprove", void 0);
+    __metadata("design:type", typeof (_a = typeof user_entity_1.UserRole !== "undefined" && user_entity_1.UserRole) === "function" ? _a : Object)
+], CreateApprovalStepDto.prototype, "role_required", void 0);
 
 
 /***/ }),
@@ -2472,6 +2485,16 @@ let DocumentsController = class DocumentsController {
     async getPermissions(id, req) {
         return this.documentsService.getDocumentPermissions(id, req.user);
     }
+    async createPermission(id, body, req) {
+        return this.documentsService.createPermission(+id, body, req.user);
+    }
+    getMyPermissions(req) {
+        const user = req.user;
+        return this.documentsService.getUserPermissions(user.id);
+    }
+    getDocumentPermissions(documentId, req) {
+        return this.documentsService.getDocumentPermissions(documentId, req.user);
+    }
 };
 exports.DocumentsController = DocumentsController;
 __decorate([
@@ -2677,6 +2700,30 @@ __decorate([
     __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", Promise)
 ], DocumentsController.prototype, "getPermissions", null);
+__decorate([
+    (0, common_1.Post)(':id/permissions'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object, Object]),
+    __metadata("design:returntype", Promise)
+], DocumentsController.prototype, "createPermission", null);
+__decorate([
+    (0, common_1.Get)('permissions/me'),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], DocumentsController.prototype, "getMyPermissions", null);
+__decorate([
+    (0, common_1.Get)(':documentId/permissions'),
+    __param(0, (0, common_1.Param)('documentId', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", void 0)
+], DocumentsController.prototype, "getDocumentPermissions", null);
 exports.DocumentsController = DocumentsController = __decorate([
     (0, swagger_1.ApiTags)('documentos'),
     (0, common_1.Controller)('documents'),
@@ -2949,16 +2996,6 @@ let DocumentsService = class DocumentsService {
         await this.checkDocumentPermission(document, user, document_permission_entity_1.PermissionType.WRITE);
         await this.tagsRepository.delete({ id: tagId, document_id: documentId });
     }
-    async createPermission(documentId, userId, role, permissionType, grantedBy) {
-        const permission = this.permissionsRepository.create({
-            document_id: documentId,
-            user_id: userId,
-            role,
-            permission_type: permissionType,
-            granted_by: grantedBy,
-        });
-        return this.permissionsRepository.save(permission);
-    }
     async getDocumentPermissions(documentId, user) {
         const document = await this.findOne(documentId, user);
         if (![user_entity_1.UserRole.ADMIN, user_entity_1.UserRole.MANAGER].includes(user.role) && document.created_by !== user.id) {
@@ -3080,6 +3117,38 @@ let DocumentsService = class DocumentsService {
             minor++;
         }
         return `${major}.${minor}`;
+    }
+    async createPermission(documentId, dtos, user) {
+        const document = await this.findOne(documentId, user);
+        if (![user_entity_1.UserRole.ADMIN, user_entity_1.UserRole.MANAGER].includes(user.role)) {
+            throw new common_1.ForbiddenException('No tienes permisos para asignar permisos');
+        }
+        await this.permissionsRepository.delete({ document_id: documentId });
+        const newPermissions = dtos.map(dto => this.permissionsRepository.create({
+            ...dto,
+            document_id: documentId,
+            granted_by: user.id,
+            granted_at: new Date()
+        }));
+        return this.permissionsRepository.save(newPermissions);
+    }
+    async getUserPermissions(userId) {
+        const perms = await this.permissionsRepository.find({
+            where: { user_id: userId },
+        });
+        return perms.map(p => ({
+            document_id: p.document_id,
+            permission_type: p.permission_type,
+        }));
+    }
+    async getMyPermissions(user) {
+        const perms = await this.permissionsRepository.find({
+            where: { user_id: user.id },
+        });
+        return perms.map(p => ({
+            document_id: p.document_id,
+            permission_type: p.permission_type,
+        }));
     }
 };
 exports.DocumentsService = DocumentsService;
@@ -3509,7 +3578,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UsersController = void 0;
 const common_1 = __webpack_require__(/*! @nestjs/common */ "@nestjs/common");
@@ -3527,8 +3596,11 @@ let UsersController = class UsersController {
     async create(createUserDto) {
         return this.usersService.create(createUserDto);
     }
-    async findAll() {
-        return this.usersService.findAll();
+    async findAll(page = 1, limit = 10) {
+        return this.usersService.findAll(page, limit);
+    }
+    async findAlls() {
+        return this.usersService.findAlls();
     }
     async findOne(id) {
         return this.usersService.findOne(id);
@@ -3542,6 +3614,25 @@ let UsersController = class UsersController {
     }
     async getUsersByRole(role) {
         return this.usersService.getUsersByRole(role);
+    }
+    async updatePermissions(id, permissions) {
+        return this.usersService.updatePermissions(id, permissions);
+    }
+    async getCurrentUserPermissions(req) {
+        const userId = req.user?.id;
+        if (!userId) {
+            throw new common_1.NotFoundException('Usuario no autenticado');
+        }
+        const user = await this.usersService.findById(userId);
+        if (!user) {
+            throw new common_1.NotFoundException(`Usuario con id ${userId} no encontrado`);
+        }
+        return user.permissions;
+    }
+    async getProfile(req) {
+        const userId = Number(req.user.id);
+        const user = await this.usersService.findById(userId);
+        return user;
     }
 };
 exports.UsersController = UsersController;
@@ -3560,10 +3651,25 @@ __decorate([
     (0, roles_decorator_1.Roles)(user_entity_1.UserRole.ADMIN, user_entity_1.UserRole.MANAGER),
     (0, swagger_1.ApiOperation)({ summary: 'Obtener todos los usuarios' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Lista de usuarios', type: [user_dto_1.UserResponseDto] }),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Number]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('all'),
+    (0, roles_decorator_1.Roles)(user_entity_1.UserRole.ADMIN, user_entity_1.UserRole.MANAGER),
+    (0, swagger_1.ApiOperation)({ summary: 'Obtener todos los usuarios' }),
+    (0, swagger_1.ApiResponse)({
+        status: 200,
+        description: 'Lista de usuarios',
+        type: [user_dto_1.UserResponseDto],
+    }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
-], UsersController.prototype, "findAll", null);
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "findAlls", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, roles_decorator_1.Roles)(user_entity_1.UserRole.ADMIN, user_entity_1.UserRole.MANAGER),
@@ -3572,7 +3678,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
 ], UsersController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
@@ -3582,8 +3688,8 @@ __decorate([
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, typeof (_f = typeof user_dto_1.UpdateUserDto !== "undefined" && user_dto_1.UpdateUserDto) === "function" ? _f : Object]),
-    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+    __metadata("design:paramtypes", [Number, typeof (_e = typeof user_dto_1.UpdateUserDto !== "undefined" && user_dto_1.UpdateUserDto) === "function" ? _e : Object]),
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
 ], UsersController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
@@ -3593,7 +3699,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
-    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
 ], UsersController.prototype, "remove", null);
 __decorate([
     (0, common_1.Get)('role/:role'),
@@ -3602,9 +3708,34 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Usuarios filtrados por rol', type: [user_dto_1.UserResponseDto] }),
     __param(0, (0, common_1.Param)('role')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_j = typeof user_entity_1.UserRole !== "undefined" && user_entity_1.UserRole) === "function" ? _j : Object]),
-    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
+    __metadata("design:paramtypes", [typeof (_h = typeof user_entity_1.UserRole !== "undefined" && user_entity_1.UserRole) === "function" ? _h : Object]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
 ], UsersController.prototype, "getUsersByRole", null);
+__decorate([
+    (0, common_1.Patch)(':id/permissions'),
+    (0, roles_decorator_1.Roles)(user_entity_1.UserRole.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Actualizar permisos de un usuario' }),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, typeof (_k = typeof Record !== "undefined" && Record) === "function" ? _k : Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "updatePermissions", null);
+__decorate([
+    (0, common_1.Get)('me/permissions'),
+    (0, swagger_1.ApiOperation)({ summary: 'Obtener permisos actuales del usuario' }),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
+], UsersController.prototype, "getCurrentUserPermissions", null);
+__decorate([
+    (0, common_1.Get)('me'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "getProfile", null);
 exports.UsersController = UsersController = __decorate([
     (0, swagger_1.ApiTags)('usuarios'),
     (0, common_1.Controller)('users'),
@@ -3682,10 +3813,33 @@ let UsersService = class UsersService {
     constructor(usersRepository) {
         this.usersRepository = usersRepository;
     }
-    async findAll() {
-        return this.usersRepository.find({
-            select: ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'is_active', 'created_at'],
+    async findAll(page = 1, limit = 10) {
+        const [data, total] = await this.usersRepository.findAndCount({
+            select: [
+                'id',
+                'username',
+                'email',
+                'first_name',
+                'last_name',
+                'role',
+                'is_active',
+                'created_at',
+                'permissions',
+            ],
+            skip: (page - 1) * limit,
+            take: limit,
+            order: { created_at: 'DESC' },
         });
+        return {
+            total,
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            limit,
+            data,
+        };
+    }
+    async findAlls() {
+        return this.usersRepository.find();
     }
     async findOne(id) {
         const user = await this.usersRepository.findOne({
@@ -3767,6 +3921,36 @@ let UsersService = class UsersService {
             where: { email },
             select: ['id', 'username', 'email', 'password', 'first_name', 'last_name', 'role', 'is_active', 'created_at'],
         });
+    }
+    async updatePermissions(userId, permissions) {
+        const user = await this.usersRepository.findOneBy({ id: userId });
+        if (!user)
+            throw new common_1.NotFoundException('Usuario no encontrado');
+        user.permissions = permissions;
+        return this.usersRepository.save(user);
+    }
+    async findById(id) {
+        const user = await this.usersRepository.findOne({
+            where: { id },
+        });
+        if (!user) {
+            throw new common_1.NotFoundException(`Usuario con id ${id} no encontrado`);
+        }
+        const permissions = this.getDefaultPermissions(user.role);
+        return { ...user, permissions };
+    }
+    getDefaultPermissions(role) {
+        switch (role) {
+            case user_entity_1.UserRole.ADMIN:
+                return { create: true, edit: true, delete: true, version: true };
+            case user_entity_1.UserRole.MANAGER:
+                return { create: true, edit: true, delete: false, version: true };
+            case user_entity_1.UserRole.EDITOR:
+                return { create: true, edit: true, delete: false, version: true };
+            case user_entity_1.UserRole.VIEWER:
+            default:
+                return { create: false, edit: false, delete: false, version: false };
+        }
     }
 };
 exports.UsersService = UsersService;
@@ -4047,12 +4231,7 @@ const express_1 = __webpack_require__(/*! express */ "express");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const configService = app.get(config_1.ConfigService);
-    app.enableCors({
-        origin: ['https://brcinoqua.com', 'http://localhost:4000', 'http://localhost:4200', 'https://www.brcinoqua.com'],
-        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-        allowedHeaders: 'Content-Type,Authorization',
-        credentials: true,
-    });
+    app.enableCors({ origin: true, credentials: true });
     app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(new common_1.ValidationPipe({
         transform: true,
@@ -4079,7 +4258,7 @@ async function bootstrap() {
     const document = swagger_1.SwaggerModule.createDocument(app, config);
     swagger_1.SwaggerModule.setup('api/docs', app, document);
     const port = configService.get('PORT', 3000);
-    await app.listen(port, '0.0.0.0');
+    await app.listen(port);
     console.log(`🚀 Aplicación corriendo en: http://localhost:${port}`);
     console.log(`📚 Documentación disponible en: http://localhost:${port}/api/docs`);
 }

@@ -25,7 +25,7 @@ import { DocumentsService } from './documents.service';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@modules/auth/guards/roles.guard';
 import { Roles } from '@modules/auth/decorators/roles.decorator';
-import { UserRole } from '@entities/user.entity';
+import { User, UserRole } from '@entities/user.entity';
 
 import {
   CreateDocumentDto,
@@ -38,6 +38,12 @@ import {
   DocumentVersionResponseDto,
   PaginatedDocumentsDto,
 } from './dto/document.dto';
+
+interface AuthRequest extends Request {
+  user: User; // agregamos la propiedad user
+}
+
+
 import { diskStorage } from 'multer';
 import path, { extname } from 'path';
 import { DocumentVersion } from '@/entities';
@@ -274,4 +280,30 @@ async getVersions(@Param('id', ParseIntPipe) id: number, @Request() req): Promis
   async getPermissions(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.documentsService.getDocumentPermissions(id, req.user);
   }
+ //Permisos crear
+  @Post(':id/permissions')
+async createPermission(
+  @Param('id') id: number,
+  @Body() body: any,
+  @Req() req
+) {
+  return this.documentsService.createPermission(+id, body, req.user);
+}
+
+  @Get('permissions/me')
+getMyPermissions(@Req() req: AuthRequest) {
+  const user = req.user;
+  return this.documentsService.getUserPermissions(user.id);
+}
+
+  // 🔹 Opcional: permisos de un documento específico
+@Get(':documentId/permissions')
+getDocumentPermissions(
+  @Param('documentId', ParseIntPipe) documentId: number,
+  @Req() req: any, // req.user viene del JWT guard
+) {
+  return this.documentsService.getDocumentPermissions(documentId, req.user);
+}
+
+
 }

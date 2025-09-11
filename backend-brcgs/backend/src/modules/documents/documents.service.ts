@@ -247,24 +247,8 @@ async getDocumentVersions(documentId: number, user: User): Promise<DocumentVersi
     await this.tagsRepository.delete({ id: tagId, document_id: documentId });
   }
 
-  // Permisos
-  async createPermission(
-    documentId: number,
-    userId: number | null,
-    role: UserRole | null,
-    permissionType: PermissionType,
-    grantedBy: number,
-  ): Promise<DocumentPermission> {
-    const permission = this.permissionsRepository.create({
-      document_id: documentId,
-      user_id: userId,
-      role,
-      permission_type: permissionType,
-      granted_by: grantedBy,
-    });
 
-    return this.permissionsRepository.save(permission);
-  }
+  
 
   async getDocumentPermissions(documentId: number, user: User): Promise<DocumentPermission[]> {
     const document = await this.findOne(documentId, user);
@@ -443,7 +427,57 @@ async getNextVersionNumber(documentId: number, isMajorVersion: boolean): Promise
   return `${major}.${minor}`;
 }
 
+  // Permisos
+async createPermission(
+  documentId: number,
+  dtos: Partial<DocumentPermission>[],
+  user: User
+): Promise<DocumentPermission[]> {
+  const document = await this.findOne(documentId, user);
 
+  if (![UserRole.ADMIN, UserRole.MANAGER].includes(user.role)) {
+    throw new ForbiddenException('No tienes permisos para asignar permisos');
+  }
 
+  // 🔥 eliminar los permisos previos del documento
+  await this.permissionsRepository.delete({ document_id: documentId });
+
+  // 🔥 insertar los nuevos
+  const newPermissions = dtos.map(dto =>
+    this.permissionsRepository.create({
+      ...dto,
+      document_id: documentId,
+      granted_by: user.id,
+      granted_at: new Date()
+    })
+  );
+
+  return this.permissionsRepository.save(newPermissions);
+}
+
+ async getUserPermissions(userId: number) {
+    const perms = await this.permissionsRepository.find({
+      where: { user_id: userId },
+    });
+
+    // Devolver solo lo que necesitas: document_id y permission_type
+    return perms.map(p => ({
+      document_id: p.document_id,
+      permission_type: p.permission_type,
+    }));
+  }
+
+  // 🔹 Permisos de un documento específico
+ async getMyPermissions(user: User): Promise<{ document_id: number; permission_type: string }[]> {
+  const perms = await this.permissionsRepository.find({
+    where: { user_id: user.id },
+  });
+
+  // Solo devolvemos lo que necesitamos en el frontend
+  return perms.map(p => ({
+    document_id: p.document_id,
+    permission_type: p.permission_type,
+  }));
+}
 
 }
